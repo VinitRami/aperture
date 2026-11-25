@@ -71,6 +71,17 @@ than HTML strings.
   with the `bpy` module) and copy the GLB and the `*_ao.webp` / `*_nrm.webp`
   maps into `model/`.
 
+## Deploy
+
+Vercel project `aperture`, connected to this repository: every push to `main`
+deploys to production, other branches get preview URLs. There is no build
+step; the framework preset is "Other" and the files are served as they are.
+`vercel.json` adds the security headers and the cache rules.
+
+The domain is `aperture.vinitrami.co.in`, added under the project's
+Settings → Domains, with a `CNAME` record for `aperture` at the DNS host of
+`vinitrami.co.in` pointing at the target Vercel shows there.
+
 ## Run locally
 
 ```bash
