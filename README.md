@@ -78,6 +78,16 @@ deploys to production, other branches get preview URLs. There is no build
 step; the framework preset is "Other" and the files are served as they are.
 `vercel.json` adds the security headers and the cache rules.
 
+The project is on Vercel's Hobby plan, which only deploys commits whose author
+is the account owner: an email linked to the `vinitrami-Soc` GitHub account.
+Commits by any other author (a bot, a tool, another email) are skipped, so
+this repository sets its author in `.git/config`:
+
+```bash
+git config user.name "Vinit Rami"
+git config user.email "274839285+vinitrami-Soc@users.noreply.github.com"
+```
+
 The domain is `aperture.vinitrami.co.in`, added under the project's
 Settings → Domains, with a `CNAME` record for `aperture` at the DNS host of
 `vinitrami.co.in` pointing at the target Vercel shows there.
