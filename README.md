@@ -74,24 +74,20 @@ than HTML strings.
 
 ## Deploy
 
-Vercel project `aperture`, connected to this repository: every push to `main`
-deploys to production, other branches get preview URLs. There is no build
-step; the framework preset is "Other" and the files are served as they are.
-`vercel.json` adds the security headers and the cache rules.
+The repository lives at `VinitRami/aperture`, in the same GitHub account that
+the Vercel account is linked to (the main site's repository is there too).
+Vercel only sees repositories in that account, so keep it there.
 
-The project is on Vercel's Hobby plan, which only deploys commits whose author
-is the account owner: an email linked to the `vinitrami-Soc` GitHub account.
-Commits by any other author (a bot, a tool, another email) are skipped, so
-this repository sets its author in `.git/config`:
-
-```bash
-git config user.name "Vinit Rami"
-git config user.email "274839285+vinitrami-Soc@users.noreply.github.com"
-```
-
-The domain is `aperture.vinitrami.co.in`, added under the project's
-Settings → Domains, with a `CNAME` record for `aperture` at the DNS host of
-`vinitrami.co.in` pointing at the target Vercel shows there.
+- **Vercel project** `aperture`: every push to `main` deploys to production,
+  other branches get preview URLs. No build step: the framework preset is
+  "Other" and the files are served as they are. `vercel.json` adds the
+  security headers and the cache rules.
+- **Domain** `aperture.vinitrami.co.in`, added under the project's
+  Settings → Domains.
+- **DNS** for `vinitrami.co.in` is managed at Cloudflare (the domain is
+  registered at GoDaddy, whose nameservers point to Cloudflare; leave those
+  alone). The record is `CNAME aperture → cname.vercel-dns.com` with the
+  proxy off ("DNS only"), so Vercel serves the certificate and the headers.
 
 ## Run locally
 
