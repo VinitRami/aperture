@@ -922,15 +922,21 @@
     if (part === 'modeDial') return 'dial';
     if (part === 'screen') return 'screen';
     if (part === 'ok') return 'ok';
-    if (part === 'plastic' && h.point) { var dm = model.worldToLocal(h.point.clone()).distanceTo(V3(-3.95, -0.55, -2.55)); if (dm < 0.5) return 'ok'; if (dm < 1.15) return 'msel'; }
+    if (part === 'plastic' && h.point) {
+      /* OK sits inside the selector ring (radius 0.58 to 1.07); only the ring's left and right sides step through photos */
+      var lp = model.worldToLocal(h.point.clone()), rx = lp.x + 3.95, ry = lp.y + 0.55, dm = Math.hypot(rx, ry);
+      if (dm < 0.5) return 'ok';
+      if (dm >= 0.55 && dm <= 1.1 && Math.abs(rx) > Math.abs(ry)) return 'msel';
+    }
     return 'body';
   }
-  var TIPS = { zoom: 'Zoom 18 / 55', glass: 'Open the portfolio', shutter: 'Fire the flash', rec: 'Record', dial: 'Turn the dial', screen: 'Full view', ok: 'Full view', msel: 'Next photo', body: 'Pick it up' };
+  var TIPS = { zoom: 'Zoom 18 / 55', glass: 'Open the portfolio', shutter: 'Fire the flash', rec: 'Record', dial: 'Turn the dial', screen: 'Full view', ok: 'Full view', msel: 'Previous / next photo', body: 'Pick it up' };
   var tip = $('tip'), lastHover = 0;
   canvas.addEventListener('pointerdown', function (e) {
     if (e.button !== 0) return;
     actx();
-    down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now() }; dialAcc = 0; effDrag = false;
+    down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), onPhoto: false }; dialAcc = 0; effDrag = false;
+    if (state === 'full') { var hf = hit(e); down.onPhoto = !!hf && what(hf) === 'screen'; }
     if (state === 'back' && MODES[idx].set === 'edit') { var h = hit(e); if (h && what(h) === 'screen' && h.uv) { effDrag = true; effSweep = null; split = h.uv.x; drawLCD(); } }
     canvas.setPointerCapture(e.pointerId);
   });
@@ -955,7 +961,7 @@
   function up(e) {
     if (!down) return;
     var moved = dragging, dx = e.clientX - down.x; dragging = false; canvas.classList.remove('dragging');
-    if (state === 'full' && moved && Math.abs(dx) > 50) move(dx < 0 ? 1 : -1);
+    if (state === 'full' && moved && down.onPhoto && Math.abs(dx) > 50) move(dx < 0 ? 1 : -1);
     if (!moved) click(e);
     down = null;
   }
@@ -964,7 +970,7 @@
   canvas.addEventListener('dblclick', function () { user.yaw = 0; user.pitch = 0; user.vy = user.vp = 0; });
   function click(e) {
     var h = hit(e), w = what(h);
-    if (state === 'full') { var r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) / r.width; if (x < 0.3) move(-1); else if (x > 0.7) move(1); return; }
+    if (state === 'full') return; /* in full view the photo changes only from the arrow buttons, the keys or a swipe on the photo */
     if (w === 'shutter' || w === 'rec') { fireFlash(w); return; }
     if (w === 'zoom') { toggleZoom(); return; }
     if (w === 'glass') { lensPreview(e); return; }
@@ -973,7 +979,7 @@
     if (state === 'back') {
       if (w === 'screen') { if (MODES[idx].set !== 'edit') openFull(); return; }
       if (w === 'ok') { openFull(); return; }
-      if (w === 'msel') { var p = model.worldToLocal(h.point.clone()); move(p.x < -3.95 ? 1 : -1); }
+      if (w === 'msel') { var p = model.worldToLocal(h.point.clone()); move(p.x < -3.95 ? 1 : -1); SND.tick(); }
     }
   }
   var wheelAcc = 0;
@@ -1295,7 +1301,8 @@
   var booted = true;
   route();
 
-  window.__cam = { state: function () { return state; }, pickUp: pickUp, showOnScreen: showOnScreen, openFull: openFull, step: step, user: user, toggleZoom: toggleZoom, fireFlash: fireFlash, lensPreview: lensPreview, nodes: NODE, dr: function () { return DR; } };
+  window.__cam = { state: function () { return state; }, pickUp: pickUp, showOnScreen: showOnScreen, openFull: openFull, step: step, user: user, toggleZoom: toggleZoom, fireFlash: fireFlash, lensPreview: lensPreview, nodes: NODE, dr: function () { return DR; },
+    photo: function () { return list[pos]; }, toClient: function (x, y, z) { var v = model.localToWorld(V3(x, y, z)).project(cam), r = canvas.getBoundingClientRect(); return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height }; } };
 
   function noGLFallback() {
     var fb = document.querySelector('.fallback');
