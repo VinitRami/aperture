@@ -4,7 +4,8 @@
 
 A photography portfolio built around a 3D camera. It is its own site, separate
 from the main portfolio at https://www.vinitrami.co.in: static files, no build
-step and nothing loaded from other origins, deployed by Vercel from `main`.
+step and nothing loaded from other origins, deployed by Vercel from `main`
+(every other branch gets a preview deployment).
 
 ## What is on the page
 
@@ -58,6 +59,17 @@ the markup needs are `data-*` attributes mapped to CSS custom properties at
 the bottom of `site.css`, and scripts build elements with DOM calls rather
 than HTML strings.
 
+## Analytics
+
+Vercel Web Analytics counts page views. Its script is served from the site's own
+origin (`/_vercel/insights/script.js`), so it fits the CSP above; it sets no
+cookies and stores no personal data. Turn it on in the Vercel project under
+**Analytics → Enable**; until then the script request returns 404 and nothing is
+counted. Locally the request also 404s, which is expected.
+
+Files in `model/` and `img/` are cached for a week, so the build adds a content
+hash to the URLs of the ones that change (`d5200.glb?v=…`, `echo-face.webp?v=…`).
+
 ## Updating content
 
 - **Photos:** add `img/<id>.webp` and `img/<id>-s.webp`, then add the photo to
@@ -95,4 +107,3 @@ Vercel only sees repositories in that account, so keep it there.
 python3 -m http.server 8123
 # open http://localhost:8123
 ```
-Commit directly to the main branch"
