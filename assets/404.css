@@ -1,0 +1,5 @@
+/* The 404 page: the studio sweep, one huge number in the masthead face, a way back. */
+.nf { min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 18px; padding: 32px max(16px, env(safe-area-inset-left, 0px)); text-align: center; background: var(--sweep); }
+.nf-k { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.nf-h { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(140px, 34vw, 420px); line-height: .84; letter-spacing: -.02em; color: var(--ink); }
+.nf-t { margin: 0 0 10px; font-size: 16px; color: var(--ink-2); }
