@@ -56,6 +56,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ed.mr { right: max(28px, env(safe-area-inset-right, 0px)); top: 49%; text-align: right; }
 .ed.mr b { letter-spacing: .16em; }
 .ed.lr { right: max(28px, env(safe-area-inset-right, 0px)); top: 69%; text-align: right; }
+/* on short, wide windows the name reaches below 49%: the side captions keep a clear gap under its letters
+   (the name's box is top offset + 0.2248 x its width; see .mast) */
+.hero { --mast-end: calc(env(safe-area-inset-top, 0px) + clamp(30px, 5.2vh, 48px) + min(100vw, 1600px) * .2248); }
+.ed.ml, .ed.mr { top: max(49%, calc(var(--mast-end) + 44px)); }
+.ed.lr { top: max(69%, calc(var(--mast-end) + 190px)); }
+@media (max-height: 700px) and (min-width: 861px) { .ed.lr { display: none; } }
 .ed.lr .num { display: block; font-weight: 300; font-size: 56px; line-height: 1; letter-spacing: 0; margin-bottom: 8px; }
 .ed.lr .ico { margin: 16px 0 0 auto; width: 26px; }
 .ed.bar { right: max(28px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); width: 96px; height: 32px;
@@ -73,8 +79,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; touch-action: pan-y; cursor: grab; outline: none; }
 #gl.dragging { cursor: grabbing; }
 #gl.point { cursor: pointer; }
-.fallback { position: absolute; left: 50%; top: 58%; width: min(40vw, 560px); transform: translate(-50%, -50%) rotate(-8deg); z-index: 1; transition: opacity .5s var(--ease); }
-.gl-ready .fallback { opacity: 0; pointer-events: none; }
+.fallback { position: absolute; left: 50%; top: 57%; width: calc(max(100svh, 620px) * .773); height: auto; transform: translate(-50.97%, -37.19%); z-index: 1; transition: opacity .7s var(--ease); pointer-events: none; }
+@media (max-aspect-ratio: 1/1) { .fallback { width: 77.3%; } }
+@media (max-aspect-ratio: 9/10) { .fallback { top: 54.2%; width: 105.4%; } }
+#gl { opacity: 0; transition: opacity .7s var(--ease); }
+.gl-ready #gl { opacity: 1; }
+/* loading: a status line where the hint sits, until the first 3D frame is drawn */
+.loading { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 86px); z-index: 2; margin: 0; transform: translateX(-50%); display: grid; justify-items: center; gap: 9px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; transition: opacity .5s var(--ease), visibility 0s .5s; }
+.loading i { position: relative; display: block; width: 120px; height: 2px; overflow: hidden; background: rgba(17,17,17,.12); }
+.loading i::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; background: var(--ink); animation: loadbar 1.2s var(--ease) infinite; }
+@keyframes loadbar { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
+.gl-ready .loading, .no-gl .loading { opacity: 0; visibility: hidden; }
+.hero:not(.gl-ready):not(.no-gl) .hint { opacity: 0; }
+.gl-ready .fallback { opacity: 0; }
 .dim { position: absolute; inset: 0; z-index: 0; background: var(--body-black); opacity: 0; pointer-events: none; transition: opacity .7s var(--ease); }
 .hero[data-state="full"] .dim { opacity: 1; }
 .blink { position: absolute; inset: 0; z-index: 4; background: var(--body-black); opacity: 0; pointer-events: none; }
@@ -168,6 +186,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes pop { from { transform: scale(.6) translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 .hero .details.hide-full { opacity: 0; visibility: hidden; }
 .d-file { margin: 12px 0 0; font-family: var(--mono); font-size: 11px; color: var(--mute); }
+.d-file:empty { display: none; }
+.d-grid[hidden], .d-none[hidden] { display: none; }
+.d-none { margin: 16px 0 0; padding: 10px 0; border-top: 1px solid currentColor; border-bottom: 1px solid rgba(17,17,17,.18); font-size: 13px; line-height: 1.45; color: var(--mute); }
+.hero[data-state="full"] .d-none { color: #A9ABB0; border-bottom-color: rgba(255,255,255,.2); }
+.d-close { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* through the lens */
 .lensview { position: absolute; inset: 0; z-index: 7; background: var(--body-black); color: var(--white); }
@@ -291,7 +315,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .ed.ml, .ed.mr, .ed.lr { display: none; }
   .ed.tr { gap: 12px; }
   .ed.tr > span { display: none; }
-  .hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 138px); }
+  .hint, .loading { bottom: calc(env(safe-area-inset-bottom, 0px) + 138px); }
   .readout { width: 100%; order: -1; }
   #dock-full { flex-direction: column; align-items: stretch; }
   #dock-full .acts { justify-content: center; flex-wrap: wrap; }
@@ -300,7 +324,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: var(--studio-hi); color: var(--ink); border-radius: 20px 20px 0 0; box-shadow: 0 -18px 40px -20px rgba(0,0,0,.4); transform: translateY(105%); z-index: 6; }
   .hero[data-state="back"] .details, .hero[data-state="full"] .details { opacity: 0; visibility: hidden; transform: translateY(105%); }
   .hero .details.open { opacity: 1; visibility: visible; transform: none; transition: transform .7s var(--expo), opacity .3s, visibility 0s; color: var(--ink); }
-  .hero[data-state="full"] .details.open .d-top, .hero[data-state="full"] .details.open .d-k, .hero[data-state="full"] .details.open .d-grid dt { color: var(--mute); }
+  .hero[data-state="back"] .details, .hero[data-state="full"] .details { color: var(--ink); background: var(--studio-hi); border-radius: 20px 20px 0 0; box-shadow: 0 -18px 40px -20px rgba(0,0,0,.4);
+    padding: 14px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 18px) max(16px, env(safe-area-inset-left, 0px)); overscroll-behavior: contain; }
+  .hero[data-state="full"] .d-top, .hero[data-state="full"] .d-k, .hero[data-state="full"] .d-file, .hero[data-state="full"] .d-grid dt, .hero[data-state="full"] .d-none { color: var(--mute); }
+  .hero[data-state="full"] .d-grid div, .hero[data-state="full"] .d-none { border-bottom-color: rgba(17,17,17,.18); }
+  .hero[data-state="full"] .d-grid div:nth-child(odd) { border-right-color: rgba(17,17,17,.18); }
+  .d-close { display: grid; place-items: center; position: sticky; top: 0; z-index: 1; width: 44px; height: 44px; margin: -2px -6px -42px auto; padding: 0; border: 0; border-radius: 50%;
+    background: var(--studio-hi); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(17,17,17,.14); cursor: pointer; touch-action: manipulation; }
+  .d-close svg { width: 18px; height: 18px; }
+  .d-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .d-top { padding-right: 50px; min-height: 30px; align-items: center; }
   .d-num { font-size: 54px; }
   .lv-hud svg { width: 92vw; }
   .dr-note { display: none; }
@@ -309,6 +342,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .ready .mast > span > span, .about.in .ln > span, .about.in .e-photo img, .about.in .e-bar, .about.in .e-up, .about.in .drift, .swap .ln > span, .swap .d-pal span, .swap .d-grid dd, .readout.swap b, .readout.swap span, .darkroom.go .dr-mast > span > span { animation: none; }
   .blink.go, .flashfx.go, .rip { animation: none; }
+  .loading i::after { animation: none; width: 100%; opacity: .45; }
   .lensview.open .lv-img, .lv-page { transition: none; }
 }
 

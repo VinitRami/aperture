@@ -173,7 +173,10 @@
     if ((m = s.match(/(\d+)mm/))) o.f = m[1] + 'mm';
     return o;
   }
-  function setDD(id, v) { var el = $(id); el.textContent = v || 'Not recorded'; el.classList.toggle('na', !v); }
+  function setDD(id, v) {
+    var el = $(id); el.textContent = v || ''; el.classList.toggle('na', !v);
+    if (!v) { var d = document.createElement('span'), t = document.createElement('span'); d.setAttribute('aria-hidden', 'true'); d.textContent = '\u2014'; t.className = 'sr'; t.textContent = 'Not recorded'; el.appendChild(d); el.appendChild(t); }
+  }
   var AN = {};
   function analyse(id, cb) {
     if (AN[id]) { cb(AN[id]); return; }
@@ -234,8 +237,10 @@
     $('dTitle').textContent = m.set === 'edit' ? 'Lit windows, before the edit' : p[0];
     $('dPlaceRow').hidden = !PLACE[id]; $('dPlace').textContent = PLACE[id] || '';
     var phone = /Galaxy/.test(p[1]);
-    $('dCam').textContent = p[1] || 'Camera not recorded'; $('dCamIco').innerHTML = phone ? ICONS['device-mobile-camera'] : ICONS.camera;
+    $('dCam').textContent = p[1] || ''; $('dCamIco').innerHTML = phone ? ICONS['device-mobile-camera'] : ICONS.camera;
     setDD('dS', st.s); setDD('dA', st.a); setDD('dI', st.i); setDD('dF', st.f);
+    var none = !st.s && !st.a && !st.i && !st.f;
+    det.querySelector('.d-grid').hidden = none; $('dNone').hidden = !none; $('dCamRow').hidden = !p[1];
     $('dFile').textContent = p[2] ? p[2] : '';
     swap(det);
     analyse(id, function (an) {
@@ -247,8 +252,24 @@
       swap(det);
     });
   }
-  $('infoBtn').addEventListener('click', function () { var o = $('details').classList.toggle('open'); this.setAttribute('aria-expanded', o ? 'true' : 'false'); });
-  $('fInfo').addEventListener('click', function () { if (window.innerWidth <= 860) $('details').classList.toggle('open'); else $('details').classList.toggle('hide-full'); });
+  /* phones: the details are a bottom sheet; desktop full view: a card that can be hidden */
+  var sheetFrom = null;
+  function isPhone() { return window.innerWidth <= 860; }
+  function sheetOpen() { return $('details').classList.contains('open'); }
+  function setSheet(open, from) {
+    var d = $('details'), was = sheetOpen();
+    d.classList.toggle('open', open);
+    $('infoBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (isPhone()) $('fInfo').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open && !was) { sheetFrom = from || null; d.scrollTop = 0; try { $('dClose').focus({ preventScroll: true }); } catch (e) {} }
+    else if (!open && was) { if (sheetFrom && d.contains(document.activeElement) && sheetFrom.offsetParent) sheetFrom.focus({ preventScroll: true }); sheetFrom = null; }
+  }
+  $('infoBtn').addEventListener('click', function () { setSheet(!sheetOpen(), this); });
+  $('fInfo').addEventListener('click', function () {
+    if (isPhone()) { setSheet(!sheetOpen(), this); return; }
+    var hid = $('details').classList.toggle('hide-full'); this.setAttribute('aria-expanded', hid ? 'false' : 'true');
+  });
+  $('dClose').addEventListener('click', function () { setSheet(false); });
 
   var about = $('about');
   if ('IntersectionObserver' in window && !reduce) {
@@ -267,7 +288,9 @@
   try { if (T) renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: 'high-performance' }); } catch (e) { renderer = null; }
   hero.classList.add('ready');
   route();
-  if (!renderer) { canvas.style.display = 'none'; noGLFallback(); return; }
+  if (!renderer) { canvas.style.display = 'none'; hero.classList.add('no-gl'); noGLFallback(); return; }
+  var MODEL_REQ = fetch('model/d5200.glb?v=8d66702cc4').then(function (r) { if (!r.ok) throw new Error('model'); return r.arrayBuffer(); });
+  MODEL_REQ.catch(function () {});
 
   function setupRenderer(r) {
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -594,7 +617,7 @@
   function loadModel(done) {
     if (!T.GLTFLoader) { done(false); return; }
     var tl = new T.TextureLoader();
-    function tx(n) { var t = tl.load('model/' + n + '.webp'); t.flipY = false; t.anisotropy = 8; return t; }
+    function tx(n) { var t = tl.load('model/' + n + '.webp?v=8d66702cc4'); t.flipY = false; t.anisotropy = 8; return t; }
     function onModel(g) {
       g.scene.children.slice().forEach(function (node) {
         var part = node.name; NODE[part] = node; REST[part] = { p: node.position.clone(), r: node.rotation.clone() };
@@ -617,7 +640,7 @@
       decorate({ zoomLocal: zl, innerLocal: il, dial: NODE.modeDial });
       done(true);
     }
-    fetch('model/d5200.glb').then(function (r) { if (!r.ok) throw new Error('model'); return r.arrayBuffer(); }).then(function (buf) {
+    MODEL_REQ.then(function (buf) {
       new T.GLTFLoader().parse(buf, '', onModel, function () { done(false); });
     }).catch(function () { done(false); });
   }
@@ -690,7 +713,7 @@
   };
   var KEYS = ['rx', 'ry', 'rz', 'size', 'frac', 'yoff', 'xoff', 'float', 'shadow', 'elev'];
   var cur = { anchor: V3(0.4, 0.4, 1.6), screenK: 0 };
-  KEYS.forEach(function (k) { cur[k] = POSES.front[k]; }); cur.ry = 0.5 + (reduce ? 0 : -2.2);
+  KEYS.forEach(function (k) { cur[k] = POSES.front[k]; }); /* starts in the front pose, the same as the placeholder picture */
   function snapshot() { var o = { anchor: cur.anchor.clone(), screenK: cur.screenK }; KEYS.forEach(function (k) { o[k] = cur[k]; }); return o; }
   var from = snapshot(), to = POSES.front, tStart = performance.now(), tDur = reduce ? 1 : 1900;
   var user = { yaw: 0, pitch: 0, vy: 0, vp: 0, idleUntil: 0 };
@@ -767,7 +790,9 @@
   /* ---------- camera actions ---------- */
   function setState(s) {
     state = s; hero.setAttribute('data-state', s); setHint();
-    if (s !== 'back' && s !== 'full') { $('details').classList.remove('open'); $('infoBtn').setAttribute('aria-expanded', 'false'); }
+    if (s !== 'back' && s !== 'full') setSheet(false);
+    if (s !== 'full') $('details').classList.remove('hide-full'); /* the card comes back with the next visit */
+    $('fInfo').setAttribute('aria-expanded', (isPhone() ? sheetOpen() : !$('details').classList.contains('hide-full')) ? 'true' : 'false');
     canvas.setAttribute('aria-label', {
       front: 'A black Nikon D5200 floating in a grey studio. Drag to turn it.',
       dial: 'The mode dial on top of the camera, set to ' + MODES[idx].name + '.',
@@ -896,7 +921,8 @@
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       var d = e.key === 'ArrowRight' ? 1 : -1;
       if (state === 'dial') { step(d); e.preventDefault(); } else if (state === 'back' || state === 'full') { move(d); e.preventDefault(); }
-    } else if (e.key === 'Escape') { if (state === 'full') closeFull(); else if (state === 'back') $('toDial').click(); else if (state === 'dial') putDown(); }
+    } else if (e.key === 'Escape' && isPhone() && sheetOpen()) { setSheet(false); }
+    else if (e.key === 'Escape') { if (state === 'full') closeFull(); else if (state === 'back') $('toDial').click(); else if (state === 'dial') putDown(); }
     else if (e.key === 'Enter' && document.activeElement === canvas) { if (state === 'front') pickUp(); else if (state === 'dial') showOnScreen(); else if (state === 'back') openFull(); }
     else if ((e.key === 'z' || e.key === 'Z') && document.activeElement === canvas) toggleZoom();
     else if ((e.key === 'f' || e.key === 'F') && document.activeElement === canvas) fireFlash('shutter');
@@ -969,6 +995,7 @@
   canvas.addEventListener('pointercancel', function () { dragging = false; down = null; canvas.classList.remove('dragging'); });
   canvas.addEventListener('dblclick', function () { user.yaw = 0; user.pitch = 0; user.vy = user.vp = 0; });
   function click(e) {
+    if (isPhone() && sheetOpen()) { setSheet(false); return; } /* a tap outside the open sheet only closes it */
     var h = hit(e), w = what(h);
     if (state === 'full') return; /* in full view the photo changes only from the arrow buttons, the keys or a swipe on the photo */
     if (w === 'shutter' || w === 'rec') { fireFlash(w); return; }
@@ -990,7 +1017,7 @@
   }, { passive: false });
 
   /* ---------- loop ---------- */
-  var visible = true, raf = 0, parts = false;
+  var visible = true, raf = 0, parts = false, modelIn = false;
   if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { visible = es[0].isIntersecting; if (visible && !raf && parts) raf = requestAnimationFrame(loop); }, { threshold: 0.01 }).observe(hero);
   function loop(now) {
     raf = 0; if (!visible || !parts || $('main').hidden) return;
@@ -999,13 +1026,14 @@
     frame(now);
     if (cur.shadow > 0.01) floor.render();
     renderer.render(scene, cam);
-    if (!hero.classList.contains('gl-ready')) hero.classList.add('gl-ready');
+    /* only once the camera itself is in the scene: until then the placeholder picture and the loader stay */
+    if (modelIn && !hero.classList.contains('gl-ready')) hero.classList.add('gl-ready');
     raf = requestAnimationFrame(loop);
   }
   setState('front'); setReadout();
   function init() {
     if (parts) return; parts = true;
-    loadModel(function (ok) { if (!ok) buildFallback(); drawLCD(); tStart = performance.now(); lastT = tStart; if (!raf) raf = requestAnimationFrame(loop); });
+    loadModel(function (ok) { if (!ok) buildFallback(); modelIn = true; drawLCD(); tStart = performance.now(); lastT = tStart; if (!raf) raf = requestAnimationFrame(loop); });
   }
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(init); setTimeout(init, 1500); } else init();
 
@@ -1019,19 +1047,46 @@
     var cv = $('dr'), r;
     try { r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: 'high-performance' }); } catch (e) { return null; }
     setupRenderer(r);
+    function drRatio() { var w = window.innerWidth, h = window.innerHeight, top = (navigator.hardwareConcurrency || 8) <= 4 ? 2.5 : 3; return Math.max(1, Math.min(window.devicePixelRatio || 1, top, Math.sqrt(5.2e6 / Math.max(1, w * h)))); }
+    r.setPixelRatio(drRatio());
     var sc = new T.Scene(), pm = new T.PMREMGenerator(r); sc.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture;
     studioLights(sc);
     var c3 = new T.PerspectiveCamera(26, 1, 0.5, 600);
     var desk = new T.Group(); sc.add(desk);
-    var alu = PM({ color: 0xbdbdc0, metalness: 1, roughness: 0.32 }), black = PM({ color: 0x0b0b0c, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.2, envMapIntensity: 0.7 });
+    var alu = PM({ color: 0xbdbdc0, metalness: 1, roughness: 0.32 });
     var SW = 1920, SHh = 1080, scv = document.createElement('canvas'); scv.width = SW; scv.height = SHh;
     var sg = scv.getContext('2d'), stex = new T.CanvasTexture(scv); stex.encoding = T.sRGBEncoding; stex.anisotropy = r.capabilities.getMaxAnisotropy();
     function m(geo, mt, x, y, z) { var o = new T.Mesh(geo, mt); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; desk.add(o); return o; }
-    m(rbox(17.2, 10.4, 0.55, 0.3), black, 0, 10.3, 0);
-    m(rbox(15.6, 8.8, 0.9, 0.9), black, 0, 10.4, -0.6);
-    var scr = m(new T.PlaneGeometry(16.4, 9.225), new T.MeshBasicMaterial({ map: stex, toneMapped: false }), 0, 10.42, 0.28); scr.name = 'drScreen'; scr.castShadow = false;
-    var gl2 = new T.Mesh(new T.PlaneGeometry(16.6, 9.4), PM({ color: 0x000000, roughness: 0.05, clearcoat: 1, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: 0.5 }));
-    gl2.position.set(0, 10.42, 0.29); desk.add(gl2);
+    /* brushed metal: fine horizontal grain in the roughness, so highlights streak like real aluminium */
+    var grain = (function () {
+      var c = document.createElement('canvas'); c.width = 512; c.height = 512; var g = c.getContext('2d');
+      g.fillStyle = 'rgb(118,118,118)'; g.fillRect(0, 0, 512, 512);
+      for (var i = 0; i < 2600; i++) { var y = Math.random() * 512, v = 96 + Math.random() * 60 | 0; g.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.55)'; g.fillRect(Math.random() * 512 - 200, y, 120 + Math.random() * 420, 0.6 + Math.random() * 0.9); }
+      var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(2, 2); t.anisotropy = 8; return t;
+    })();
+    alu.roughnessMap = grain; alu.roughness = 0.88; /* the grain averages ~0.46, so this lands near 0.4 */
+    var grey = PM({ color: 0x46474b, metalness: 1, roughness: 0.85, roughnessMap: grain, envMapIntensity: 1 });
+    /* the panel: a space-grey shell, one sheet of black glass on the front, thin even borders */
+    var CY = 10.42;
+    m(rbox(17.12, 9.92, 0.46, 0.2), grey, 0, CY, 0.02);
+    m(rbox(15.2, 8.2, 0.9, 0.7), grey, 0, CY - 0.1, -0.5);
+    var glassBlack = PM({ color: 0x030304, roughness: 0.06, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.9 });
+    m(rbox(16.98, 9.78, 0.05, 0.02), glassBlack, 0, CY, 0.26);
+    var cam = new T.Mesh(new T.CircleGeometry(0.07, 32), PM({ color: 0x0b0d12, roughness: 0.15, clearcoat: 1 })); cam.position.set(0, CY + 4.72, 0.29); desk.add(cam);
+    var camRing = new T.Mesh(new T.RingGeometry(0.07, 0.1, 32), new T.MeshBasicMaterial({ color: 0x15161a })); camRing.position.set(0, CY + 4.72, 0.289); desk.add(camRing);
+    var scr = m(new T.PlaneGeometry(16.4, 9.225), new T.MeshBasicMaterial({ map: stex, toneMapped: false }), 0, 10.42, 0.29); scr.name = 'drScreen'; scr.castShadow = false;
+    /* the cover glass over the picture: room reflections plus a soft diagonal sheen */
+    var gl2 = new T.Mesh(new T.PlaneGeometry(16.98, 9.78), PM({ color: 0x000000, roughness: 0.04, clearcoat: 1, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: 0.45 }));
+    gl2.position.set(0, 10.42, 0.3); desk.add(gl2);
+    var sheen = (function () {
+      var c = document.createElement('canvas'); c.width = 512; c.height = 296; var g = c.getContext('2d');
+      var d = g.createLinearGradient(0, 0, 512, 296); d.addColorStop(0, 'rgba(255,255,255,.10)'); d.addColorStop(0.32, 'rgba(255,255,255,.035)'); d.addColorStop(0.33, 'rgba(255,255,255,0)'); d.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = d; g.fillRect(0, 0, 512, 296);
+      var t2 = g.createLinearGradient(0, 0, 0, 40); t2.addColorStop(0, 'rgba(255,255,255,.08)'); t2.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = t2; g.fillRect(0, 0, 512, 40);
+      var t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t;
+    })();
+    var sh = new T.Mesh(new T.PlaneGeometry(16.98, 9.78), new T.MeshBasicMaterial({ map: sheen, transparent: true, blending: T.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    sh.position.set(0, 10.42, 0.305); desk.add(sh);
     /* the stand: one bent aluminium plate. The foot sits flat on the desk and the arm leans up behind the monitor to a hinge on its back. */
     var prof = new T.Shape();
     prof.moveTo(1.1, 0); prof.lineTo(-2.15, 0);
@@ -1047,12 +1102,37 @@
     m(standGeo, alu, 0, 0, 0);
     var hinge = m(new T.CylinderGeometry(0.34, 0.34, 3.3, 40), alu, 0, 8.25, -1.42); hinge.rotation.z = Math.PI / 2;
     m(rbox(3.6, 2.4, 0.2, 0.08), alu, 0, 8.6, -1.12);
-    var kb = m(rbox(13.5, 0.36, 4.3, 0.2), alu, 0, 0.18, 6.0);
-    var keyGeo = rbox(0.72, 0.14, 0.72, 0.1), keyMat = PM({ color: 0x151517, roughness: 0.55, clearcoat: 0.2 });
-    var keys = new T.InstancedMesh(keyGeo, keyMat, 15 * 5), mm = new T.Matrix4(), ki = 0;
-    for (var row = 0; row < 5; row++) for (var col = 0; col < 15; col++) { mm.makeTranslation(-5.95 + col * 0.85, 0.42, 4.3 + row * 0.85); keys.setMatrixAt(ki++, mm); }
-    keys.castShadow = keys.receiveShadow = true; desk.add(keys);
-    var mouse = m(new T.SphereGeometry(1, 48, 24), PM({ color: 0xe9e9e7, roughness: 0.35, clearcoat: 0.6 }), 9.6, 0.35, 6.2); mouse.scale.set(0.95, 0.38, 1.55);
+    var KZ = 5.0, U = 0.84, kb = m(rbox(13.4, 0.3, 5.3, 0.22), alu, 0, 0.16, KZ);
+    kb.rotation.x = 0.03; /* a slight rake, back edge higher */
+    var keyMat = PM({ color: 0x18181a, roughness: 0.62, clearcoat: 0.25, clearcoatRoughness: 0.5, envMapIntensity: 0.6 });
+    var LAY = [
+      [0.5, [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5]],
+      [1, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]],
+      [1, [1.5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5]],
+      [1, [1.75, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.25]],
+      [1, [2.25, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2.75]],
+      [1, [1, 1, 1, 1.25, 5.5, 1.25, 1, 'L', 'UD', 'R']]
+    ];
+    var kgeo = {}, kpos = {};
+    function addKey(w, h, x, z) { var k = w.toFixed(2) + 'x' + h.toFixed(2); if (!kgeo[k]) { kgeo[k] = rbox(w, 0.16, h, Math.min(0.09, h * 0.3)); kpos[k] = []; } kpos[k].push([x, z]); }
+    var GAP = 0.13, z0 = KZ - 2.25, x0 = -15 * U / 2;
+    LAY.forEach(function (row) {
+      var hgt = row[0] * U, x = x0;
+      row[1].forEach(function (w) {
+        if (w === 'L' || w === 'R') { addKey(U - GAP, U / 2 - GAP / 2, x + U / 2, z0 + hgt * 0.75); x += U; return; }
+        if (w === 'UD') { addKey(U - GAP, U / 2 - GAP / 2, x + U / 2, z0 + hgt * 0.25); addKey(U - GAP, U / 2 - GAP / 2, x + U / 2, z0 + hgt * 0.75); x += U; return; }
+        addKey(w * U - GAP, hgt - GAP, x + w * U / 2, z0 + hgt / 2); x += w * U;
+      });
+      z0 += hgt;
+    });
+    var mm = new T.Matrix4();
+    Object.keys(kgeo).forEach(function (k) {
+      var im = new T.InstancedMesh(kgeo[k], keyMat, kpos[k].length);
+      kpos[k].forEach(function (q, i) { var y = 0.38 + (KZ - q[1]) * 0.03; mm.makeTranslation(q[0], y, q[1]); im.setMatrixAt(i, mm); });
+      im.castShadow = im.receiveShadow = true; desk.add(im);
+    });
+    var mouse = m(new T.SphereGeometry(1, 64, 32), PM({ color: 0xececea, roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.2 }), 9.3, 0.34, KZ + 0.2); mouse.scale.set(0.95, 0.36, 1.55);
+
     var shadow = contactShadow(r, sc, 0, 46); shadow.SH.blur = 2.6; shadow.plane.material.opacity = 0.5;
 
     /* ---- the develop engine: a real per-pixel grade, and a histogram of whatever the screen shows ---- */
@@ -1196,8 +1276,16 @@
     function resize2() {
       var w = window.innerWidth, h = Math.max(1, cv.getBoundingClientRect().height || window.innerHeight); r.setSize(w, h, false); c3.aspect = w / h; c3.updateProjectionMatrix();
       /* a fixed camera: the monitor stays put */
-      var tanV = Math.tan(c3.fov * Math.PI / 360), phone = c3.aspect < 1, dd = Math.max(50, 9.9 / (tanV * c3.aspect));
-      if (phone) { c3.position.set(0.8, 13, dd); c3.lookAt(0, 6.4, 0); } else { c3.position.set(4.5, 13, dd); c3.lookAt(1.2, 9.4, 0); }
+      var tanV = Math.tan(c3.fov * Math.PI / 360), phone = c3.aspect < 1, dd = Math.max(54, 9.3 / (tanV * c3.aspect));
+      if (phone && c3.aspect > 0.62) dd = Math.max(dd, 64); /* tablets in portrait: height, not width, is what runs out */
+      r.setPixelRatio(drRatio()); r.setSize(w, h, false);
+      mouse.visible = !phone;
+      function place(d) { if (phone) { c3.position.set(0.8, 13, d); c3.lookAt(0, 6.6, 0); } else { c3.position.set(4.5, 13.5, d); c3.lookAt(1.2, 8.2, 0); } c3.updateMatrixWorld(); }
+      /* short screens: step the camera back until the front of the keyboard clears the buttons (layout position, so the entrance motion does not count) */
+      var dk = cv.parentNode.querySelector('.dr-dock'), limit = dk ? dk.offsetTop - cv.offsetTop - 14 : h - 20, kf = V3(0, 0.05, KZ + 2.75);
+      function low() { var v = kf.clone().project(c3); return (1 - v.y) / 2 * h; }
+      place(dd);
+      if (dk && low() > limit) { var lo = dd, hi = dd * 2.2; for (var it = 0; it < 16; it++) { var mid = (lo + hi) / 2; place(mid); if (low() > limit) lo = mid; else hi = mid; } place(hi); }
       resizedAt = 0; dirty = true;
     }
     window.addEventListener('resize', resize2);
