@@ -185,6 +185,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .d-none { margin: 16px 0 0; padding: 10px 0; border-top: 1px solid currentColor; border-bottom: 1px solid rgba(17,17,17,.18); font-size: 13px; line-height: 1.45; color: var(--mute); }
 .hero[data-state="full"] .d-none { color: #A9ABB0; border-bottom-color: rgba(255,255,255,.2); }
 .d-close { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* through the lens */
 .lensview { position: absolute; inset: 0; z-index: 7; background: var(--body-black); color: var(--white); }
@@ -322,11 +323,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .hero[data-state="full"] .d-top, .hero[data-state="full"] .d-k, .hero[data-state="full"] .d-file, .hero[data-state="full"] .d-grid dt, .hero[data-state="full"] .d-none { color: var(--mute); }
   .hero[data-state="full"] .d-grid div, .hero[data-state="full"] .d-none { border-bottom-color: rgba(17,17,17,.18); }
   .hero[data-state="full"] .d-grid div:nth-child(odd) { border-right-color: rgba(17,17,17,.18); }
-  .d-close { display: grid; place-items: center; position: sticky; top: 0; z-index: 1; width: 40px; height: 40px; margin: 0 -4px -40px auto; padding: 0; border: 0; border-radius: 50%;
+  .d-close { display: grid; place-items: center; position: sticky; top: 0; z-index: 1; width: 44px; height: 44px; margin: -2px -6px -42px auto; padding: 0; border: 0; border-radius: 50%;
     background: var(--studio-hi); color: var(--ink); box-shadow: inset 0 0 0 1px rgba(17,17,17,.14); cursor: pointer; touch-action: manipulation; }
   .d-close svg { width: 18px; height: 18px; }
   .d-close:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .d-top { padding-right: 48px; min-height: 30px; align-items: center; }
+  .d-top { padding-right: 50px; min-height: 30px; align-items: center; }
   .d-num { font-size: 54px; }
   .lv-hud svg { width: 92vw; }
   .dr-note { display: none; }

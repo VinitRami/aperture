@@ -173,7 +173,10 @@
     if ((m = s.match(/(\d+)mm/))) o.f = m[1] + 'mm';
     return o;
   }
-  function setDD(id, v) { var el = $(id); el.textContent = v || '\u2014'; el.classList.toggle('na', !v); el.setAttribute('aria-label', v ? v : 'Not recorded'); }
+  function setDD(id, v) {
+    var el = $(id); el.textContent = v || ''; el.classList.toggle('na', !v);
+    if (!v) { var d = document.createElement('span'), t = document.createElement('span'); d.setAttribute('aria-hidden', 'true'); d.textContent = '\u2014'; t.className = 'sr'; t.textContent = 'Not recorded'; el.appendChild(d); el.appendChild(t); }
+  }
   var AN = {};
   function analyse(id, cb) {
     if (AN[id]) { cb(AN[id]); return; }
@@ -788,7 +791,8 @@
   function setState(s) {
     state = s; hero.setAttribute('data-state', s); setHint();
     if (s !== 'back' && s !== 'full') setSheet(false);
-    if (s !== 'full') { $('details').classList.remove('hide-full'); $('fInfo').setAttribute('aria-expanded', 'true'); } /* the card comes back with the next visit */
+    if (s !== 'full') $('details').classList.remove('hide-full'); /* the card comes back with the next visit */
+    $('fInfo').setAttribute('aria-expanded', (isPhone() ? sheetOpen() : !$('details').classList.contains('hide-full')) ? 'true' : 'false');
     canvas.setAttribute('aria-label', {
       front: 'A black Nikon D5200 floating in a grey studio. Drag to turn it.',
       dial: 'The mode dial on top of the camera, set to ' + MODES[idx].name + '.',
@@ -917,7 +921,7 @@
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       var d = e.key === 'ArrowRight' ? 1 : -1;
       if (state === 'dial') { step(d); e.preventDefault(); } else if (state === 'back' || state === 'full') { move(d); e.preventDefault(); }
-    } else if (e.key === 'Escape' && sheetOpen()) { setSheet(false); }
+    } else if (e.key === 'Escape' && isPhone() && sheetOpen()) { setSheet(false); }
     else if (e.key === 'Escape') { if (state === 'full') closeFull(); else if (state === 'back') $('toDial').click(); else if (state === 'dial') putDown(); }
     else if (e.key === 'Enter' && document.activeElement === canvas) { if (state === 'front') pickUp(); else if (state === 'dial') showOnScreen(); else if (state === 'back') openFull(); }
     else if ((e.key === 'z' || e.key === 'Z') && document.activeElement === canvas) toggleZoom();
@@ -1043,7 +1047,7 @@
     var cv = $('dr'), r;
     try { r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: 'high-performance' }); } catch (e) { return null; }
     setupRenderer(r);
-    function drRatio() { var w = window.innerWidth, h = window.innerHeight; return Math.max(1, Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(5.2e6 / Math.max(1, w * h)))); }
+    function drRatio() { var w = window.innerWidth, h = window.innerHeight, top = (navigator.hardwareConcurrency || 8) <= 4 ? 2.5 : 3; return Math.max(1, Math.min(window.devicePixelRatio || 1, top, Math.sqrt(5.2e6 / Math.max(1, w * h)))); }
     r.setPixelRatio(drRatio());
     var sc = new T.Scene(), pm = new T.PMREMGenerator(r); sc.environment = pm.fromScene(new T.RoomEnvironment(), 0.04).texture;
     studioLights(sc);
