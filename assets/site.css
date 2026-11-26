@@ -56,6 +56,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ed.mr { right: max(28px, env(safe-area-inset-right, 0px)); top: 49%; text-align: right; }
 .ed.mr b { letter-spacing: .16em; }
 .ed.lr { right: max(28px, env(safe-area-inset-right, 0px)); top: 69%; text-align: right; }
+/* on short, wide windows the name reaches below 49%: the side captions keep a clear gap under its letters
+   (the name's box is top offset + 0.2248 x its width; see .mast) */
+.hero { --mast-end: calc(env(safe-area-inset-top, 0px) + clamp(30px, 5.2vh, 48px) + min(100vw, 1600px) * .2248); }
+.ed.ml, .ed.mr { top: max(49%, calc(var(--mast-end) + 44px)); }
+.ed.lr { top: max(69%, calc(var(--mast-end) + 190px)); }
+@media (max-height: 700px) and (min-width: 861px) { .ed.lr { display: none; } }
 .ed.lr .num { display: block; font-weight: 300; font-size: 56px; line-height: 1; letter-spacing: 0; margin-bottom: 8px; }
 .ed.lr .ico { margin: 16px 0 0 auto; width: 26px; }
 .ed.bar { right: max(28px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); width: 96px; height: 32px;
