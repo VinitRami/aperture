@@ -42,7 +42,7 @@ photo playback.
 ├── model/                  # d5200.glb plus its baked AO and normal maps
 ├── tools/blender_d5200.py  # the Blender (bpy 4.2) script that builds the model
 ├── 404.html              # the not-found page (assets/404.css)
-├── og.jpg, favicon.svg
+├── og.jpg, favicon.svg, favicon.ico
 ├── vercel.json             # security headers and caching
 ├── robots.txt, sitemap.xml
 ├── .well-known/security.txt
